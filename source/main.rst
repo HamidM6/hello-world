@@ -1,5 +1,0 @@
-MAIN
-========================
-
-.. automodule:: main
-	:members:

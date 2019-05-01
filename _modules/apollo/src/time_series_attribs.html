@@ -1,0 +1,394 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>apollo.src.time_series_attribs &mdash; apollo 3.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> apollo
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../home.html">Home</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../module_master.html">Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../model_master.html">Modles</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">apollo</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>apollo.src.time_series_attribs</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for apollo.src.time_series_attribs</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">functions to determine attributes related to time series</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="k">def</span> <span class="nf">_time_series_length_conditions</span><span class="p">(</span><span class="n">time_series_length</span><span class="p">,</span> <span class="n">time_grain</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param time_series_length:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># segment time series length</span>
+    
+    <span class="k">if</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">time_series_length</span><span class="o">/</span><span class="mf">52.00</span>
+    <span class="k">elif</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;month&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">time_series_length</span><span class="o">/</span><span class="mf">12.00</span>
+
+
+<span class="k">def</span> <span class="nf">_get_latest_date</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param x:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">x</span><span class="o">!=</span><span class="nb">max</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">empty</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">y</span>
+
+
+<span class="k">def</span> <span class="nf">_check_is_disco</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span>
+                    <span class="n">max_date</span><span class="p">,</span>
+                    <span class="n">zero_weeks_to_disco</span>
+                    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param x:</span>
+<span class="sd">    :param max_date:</span>
+<span class="sd">    :param zero_weeks_to_disco:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_disco</span> <span class="o">=</span> <span class="p">(</span><span class="n">max_date</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="n">x</span><span class="o">!=</span><span class="nb">max</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span><span class="o">/</span><span class="mi">7</span> <span class="o">&gt;=</span> <span class="n">zero_weeks_to_disco</span>
+    <span class="k">if</span> <span class="n">is_disco</span><span class="o">.</span><span class="n">empty</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">is_disco</span>
+
+
+<div class="viewcode-block" id="get_time_series_attribs"><a class="viewcode-back" href="../../../apollo/src_api/time_series_attribs.html#apollo.src.time_series_attribs.get_time_series_attribs">[docs]</a><span class="k">def</span> <span class="nf">get_time_series_attribs</span><span class="p">(</span>
+                                <span class="n">time_series_data_frame</span><span class="p">,</span> 
+                                <span class="n">key</span><span class="p">,</span> 
+                                <span class="n">time_grain</span><span class="p">,</span> 
+                                <span class="n">training_response</span><span class="p">,</span> 
+                                <span class="n">max_date</span><span class="p">,</span> 
+                                <span class="n">zero_weeks_to_disco</span><span class="p">,</span> 
+                                <span class="n">epsilon</span><span class="p">,</span>
+                                <span class="n">holdout_start_date</span>
+                            <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param time_series_data_frame:</span>
+<span class="sd">    :param key:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :param max_date:</span>
+<span class="sd">    :param zero_weeks_to_disco:</span>
+<span class="sd">    :param epsilon:</span>
+<span class="sd">    :param holdout_start_date:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_data_frame</span><span class="p">[</span>
+                                                    <span class="n">time_series_data_frame</span><span class="p">[</span><span class="n">time_grain</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">max_date</span>
+                                                <span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)[</span><span class="n">training_response</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">)</span>
+    
+    <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                                                    <span class="n">time_series_data_frame</span><span class="p">[</span><span class="n">time_series_data_frame</span><span class="p">[</span><span class="n">time_grain</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">max_date</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)[</span><span class="n">training_response</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span>
+                                                                                                    <span class="p">(</span>
+                                                                                                        <span class="p">{</span>
+                                                                                                        <span class="s1">&#39;long_term_mean&#39;</span><span class="p">:</span>       <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(),</span>
+                                                                                                        <span class="s1">&#39;long_term_min&#39;</span><span class="p">:</span>        <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                                                                                                        <span class="s1">&#39;long_term_max&#39;</span><span class="p">:</span>        <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span>
+                                                                                                        <span class="s1">&#39;long_term_stdev&#39;</span><span class="p">:</span>      <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">std</span><span class="p">(),</span>
+                                                                                                        <span class="s1">&#39;coeff_of_variation&#39;</span><span class="p">:</span>   <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mi">100</span><span class="o">*</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">))</span>
+                                                                                                        <span class="p">}</span>
+                                                                                                    <span class="p">)</span>
+                                                    <span class="p">)</span>                                                                                 
+                                                                                    
+    <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length_in_years&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                                                                                                            <span class="n">_time_series_length_conditions</span><span class="p">,</span> 
+                                                                                                            <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">time_grain</span><span class="p">,)</span>
+                                                                                                        <span class="p">)</span>
+
+    <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                                                        <span class="n">time_series_data_frame</span><span class="p">[</span>
+                                                                                <span class="n">time_series_data_frame</span><span class="p">[</span><span class="n">time_grain</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">holdout_start_date</span>
+                                                                              <span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)[</span><span class="n">training_response</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span>
+                                                                                                            <span class="p">(</span>
+                                                                                                               <span class="p">{</span>
+                                                                                                                <span class="s1">&#39;training_length_in_years&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                                                                                                               <span class="p">}</span> 
+                                                                                                            <span class="p">)</span>
+                                                  <span class="p">)</span>
+    
+    
+    <span class="k">if</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span>
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;training_length_in_years&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;training_length_in_years&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">52.00</span>
+    <span class="k">elif</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;month&#39;</span><span class="p">:</span>
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;training_length_in_years&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;training_length_in_years&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">12.00</span>
+    
+    <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                                                    <span class="n">time_series_data_frame</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)[</span><span class="n">time_grain</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span>
+                                                                                                        <span class="p">(</span>
+                                                                                                            <span class="p">{</span>
+                                                                                                                <span class="s1">&#39;earliest_date&#39;</span><span class="p">:</span>    <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                                                                                                                <span class="s1">&#39;latest_date&#39;</span><span class="p">:</span>      <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_get_latest_date</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+                                                                                                                <span class="s1">&#39;is_disco&#39;</span><span class="p">:</span>         <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_check_is_disco</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">max_date</span><span class="p">,</span> <span class="n">zero_weeks_to_disco</span><span class="p">)</span>
+                                                                                                            <span class="p">}</span>
+                                                                                                        <span class="p">)</span>
+                                                   <span class="p">)</span>
+    <span class="k">if</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span>
+            <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;missing_periods&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                                                                    <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+                                                                    <span class="p">(((</span><span class="n">pandas</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;latest_date&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="n">pandas</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;earliest_date&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span><span class="p">)</span><span class="o">/</span><span class="mi">7</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">],</span>
+                                                                    <span class="kc">None</span>
+                                                                <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;month&#39;</span><span class="p">:</span>
+            <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;missing_periods&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                                                                    <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+                                                                    <span class="p">(((</span><span class="n">pandas</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;latest_date&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="n">pandas</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;earliest_date&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span><span class="p">)</span><span class="o">/</span><span class="mi">30</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">],</span>
+                                                                    <span class="kc">None</span>
+                                                                <span class="p">)</span>
+
+        <span class="c1"># explore using describe</span>
+        <span class="c1"># raw_fact.groupby(key).describe() </span>
+    
+    
+    <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;cov_bucket&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;coeff_of_variation&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">bucket_coeff_of_variation</span><span class="p">)</span>
+    <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;training_length_bucket&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;training_length_in_years&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">bucket_length_in_years</span><span class="p">)</span>
+    <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length_bucket&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length_in_years&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">bucket_length_in_years</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">time_series_attribs</span></div>
+
+<div class="viewcode-block" id="time_series_sample_labeling_conditions"><a class="viewcode-back" href="../../../apollo/src_api/time_series_attribs.html#apollo.src.time_series_attribs.time_series_sample_labeling_conditions">[docs]</a><span class="k">def</span> <span class="nf">time_series_sample_labeling_conditions</span><span class="p">(</span>
+                                                <span class="n">x</span><span class="p">,</span> 
+                                                <span class="n">max_date</span><span class="p">,</span> 
+                                                <span class="n">holdout_start_date</span>
+                                          <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param x:</span>
+<span class="sd">    :param max_date:</span>
+<span class="sd">    :param holdout_start_date:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">max_date</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;Forecast&#39;</span>
+    <span class="k">elif</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">holdout_start_date</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;Training&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;Holdout&#39;</span></div>
+
+
+<div class="viewcode-block" id="bucket_coeff_of_variation"><a class="viewcode-back" href="../../../apollo/src_api/time_series_attribs.html#apollo.src.time_series_attribs.bucket_coeff_of_variation">[docs]</a><span class="k">def</span> <span class="nf">bucket_coeff_of_variation</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param x:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(1) &gt;= 100%&#39;</span>
+    <span class="k">elif</span> <span class="mi">50</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(2) 50 &lt;= COV &lt; 100&#39;</span>
+    <span class="k">elif</span> <span class="mi">25</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(3) 25 &lt;= COV &lt; 50&#39;</span>
+    <span class="k">elif</span> <span class="mi">10</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">25</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(4) 10 &lt;= COV &lt; 25&#39;</span>
+    <span class="k">elif</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(5) 0 &lt;= COV &lt; 10&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(6) Not Defined&#39;</span></div>
+
+
+<div class="viewcode-block" id="bucket_length_in_years"><a class="viewcode-back" href="../../../apollo/src_api/time_series_attribs.html#apollo.src.time_series_attribs.bucket_length_in_years">[docs]</a><span class="k">def</span> <span class="nf">bucket_length_in_years</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param x:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(1) &gt;= 2&#39;</span>
+    <span class="k">elif</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(2) 1 &lt;= #years &lt; 2&#39;</span>
+    <span class="k">elif</span> <span class="mf">0.5</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(3) 0.5 &lt;= #years &lt; 1&#39;</span>
+    <span class="k">elif</span> <span class="mf">0.25</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(4) 0.25 &lt;= #years &lt; 0.5&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;(5) &lt; 0.25 years&#39;</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, vik
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

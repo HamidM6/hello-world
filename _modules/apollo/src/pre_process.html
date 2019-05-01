@@ -1,0 +1,968 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>apollo.src.pre_process &mdash; apollo 3.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> apollo
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../home.html">Home</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../module_master.html">Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../model_master.html">Modles</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">apollo</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>apollo.src.pre_process</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for apollo.src.pre_process</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">pre process and prep data for model fit</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">apollo.src</span> <span class="k">import</span> <span class="n">cleanse_history</span>
+<span class="kn">import</span> <span class="nn">dask</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pandas</span>
+<span class="kn">from</span> <span class="nn">apollo.src.parallel_utils</span> <span class="k">import</span> <span class="n">get_partitioned_list</span><span class="p">,</span> <span class="n">combine_into_df</span>
+<span class="kn">from</span> <span class="nn">apollo.src</span> <span class="k">import</span> <span class="n">utils</span>
+<span class="kn">from</span> <span class="nn">apollo.src</span> <span class="k">import</span> <span class="n">memory_mgmt</span>
+
+<div class="viewcode-block" id="read_in_data"><a class="viewcode-back" href="../../../apollo/src_api/pre_process.html#apollo.src.pre_process.read_in_data">[docs]</a><span class="k">def</span> <span class="nf">read_in_data</span><span class="p">(</span>
+                    <span class="n">run_config</span><span class="p">,</span>
+                    <span class="n">main_info_logger</span><span class="p">,</span>
+                    <span class="n">time_grain</span><span class="p">,</span>
+                    <span class="n">key</span><span class="p">,</span>
+                    <span class="n">data_filters</span><span class="p">,</span>
+                    <span class="n">response_dict</span><span class="p">,</span>
+                    <span class="n">training_response</span><span class="p">,</span>
+                    <span class="n">holdout_response</span><span class="p">,</span>
+                    <span class="n">forecast_response</span><span class="p">,</span>
+                    <span class="n">pass_through_key_attributes</span><span class="p">,</span>
+                    <span class="n">benchmark</span>
+                <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param run_config:</span>
+<span class="sd">    :param main_info_logger:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param key:</span>
+<span class="sd">    :param data_filters:</span>
+<span class="sd">    :param response_dict:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :param holdout_response:</span>
+<span class="sd">    :param forecast_response:</span>
+<span class="sd">    :param pass_through_key_attributes:</span>
+<span class="sd">    :param benchmark:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_store</span> <span class="o">=</span> <span class="n">run_config</span><span class="p">[</span><span class="s1">&#39;DATA_STORE&#39;</span><span class="p">]</span>   
+    <span class="n">parallel_partitions</span> <span class="o">=</span> <span class="n">run_config</span><span class="p">[</span><span class="s1">&#39;PARALLEL_PARTITIONS&#39;</span><span class="p">]</span>
+    
+    <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;reading data store queries...&#39;</span><span class="p">)</span>
+    <span class="n">query_dictionary</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">read_params_in_from_json</span><span class="p">(</span><span class="s1">&#39;queries.json&#39;</span><span class="p">)</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">())</span>
+    
+    <span class="n">field_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_filters</span><span class="o">.</span><span class="n">keys</span><span class="p">())]</span>
+    <span class="n">filter_list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="p">[]</span> <span class="k">else</span> <span class="p">[</span><span class="n">y</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_filters</span><span class="o">.</span><span class="n">values</span><span class="p">())]</span>
+    
+    <span class="k">for</span> <span class="n">query</span> <span class="ow">in</span> <span class="n">query_dictionary</span><span class="p">:</span>       
+        
+        <span class="n">query_location</span> <span class="o">=</span> <span class="n">root</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">sql&#39;</span> <span class="o">+</span> <span class="n">query_dictionary</span><span class="p">[</span><span class="n">query</span><span class="p">]</span>
+        <span class="n">sql</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">read_in_file</span><span class="p">(</span><span class="n">query_location</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">query</span> <span class="o">==</span> <span class="s1">&#39;FACT&#39;</span><span class="p">:</span>
+            
+            <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;reading fact table...&#39;</span><span class="p">)</span>
+            
+            <span class="n">raw_fact</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">connect</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span>
+                                            <span class="n">data_store</span> <span class="o">=</span> <span class="n">data_store</span><span class="p">,</span>
+                                            <span class="n">query</span> <span class="o">=</span> <span class="n">sql</span>
+                                            <span class="p">)</span>
+            <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;read in &#39;</span>
+                                     <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">raw_fact</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroups</span><span class="p">)</span>
+                                     <span class="o">+</span> <span class="s1">&#39; &#39;</span>
+                                     <span class="o">+</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                                     <span class="o">+</span> <span class="s1">&#39; time series &#39;</span>
+                                     <span class="o">+</span> <span class="s1">&#39; for a total of &#39;</span>
+                                     <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">raw_fact</span><span class="o">.</span><span class="n">index</span><span class="p">))</span>
+                                     <span class="o">+</span> <span class="s1">&#39; rows&#39;</span>
+                                     <span class="p">)</span>
+            <span class="n">raw_fact</span> <span class="o">=</span> <span class="n">lower_case_and_filter</span><span class="p">(</span>
+                                                <span class="n">data</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span>
+                                                <span class="n">field_list</span> <span class="o">=</span> <span class="n">field_list</span><span class="p">,</span>
+                                                <span class="n">filter_list</span> <span class="o">=</span> <span class="n">filter_list</span>
+                                            <span class="p">)</span>
+            <span class="n">raw_fact</span><span class="p">[</span><span class="n">time_grain</span><span class="p">]</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">raw_fact</span><span class="p">[</span><span class="n">time_grain</span><span class="p">])</span>
+            <span class="n">raw_fact</span> <span class="o">=</span> <span class="n">drop_unused_response</span><span class="p">(</span>
+                                                <span class="n">data</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span>
+                                                <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response_dict</span>
+                                            <span class="p">)</span>
+            <span class="n">raw_fact</span> <span class="o">=</span> <span class="n">drop_unused_benchmark</span><span class="p">(</span>
+                                                <span class="n">data</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span>
+                                                <span class="n">benchmark</span> <span class="o">=</span> <span class="n">benchmark</span>
+                                            <span class="p">)</span>
+            <span class="n">raw_fact</span> <span class="o">=</span> <span class="n">aggregate_by_key</span><span class="p">(</span>
+                                            <span class="n">data</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span>
+                                            <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">,</span>
+                                            <span class="n">time_grain</span> <span class="o">=</span> <span class="n">time_grain</span><span class="p">,</span>
+                                            <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response_dict</span><span class="p">,</span>
+                                            <span class="n">benchmark</span> <span class="o">=</span> <span class="n">benchmark</span><span class="p">,</span>
+                                            <span class="n">pass_through_key_attributes</span> <span class="o">=</span> <span class="n">pass_through_key_attributes</span><span class="p">,</span>
+                                            <span class="n">parallel_partitions</span> <span class="o">=</span> <span class="n">parallel_partitions</span>
+                                        <span class="p">)</span>
+            <span class="n">raw_fact</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">memory_mgmt</span><span class="o">.</span><span class="n">optimize_raw_fact_memory</span><span class="p">(</span>
+                                                                <span class="n">raw_fact</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span>
+                                                                <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response_dict</span><span class="p">,</span>
+                                                                <span class="n">key</span> <span class="o">=</span> <span class="n">key</span>
+                                                           <span class="p">)</span>
+            <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;filtered down to &#39;</span>
+                                     <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">raw_fact</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroups</span><span class="p">)</span>
+                                     <span class="o">+</span> <span class="s1">&#39; &#39;</span>
+                                     <span class="o">+</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                                     <span class="o">+</span> <span class="s1">&#39; time series &#39;</span>
+                                     <span class="o">+</span> <span class="s1">&#39; for a total of &#39;</span>
+                                     <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">raw_fact</span><span class="o">.</span><span class="n">index</span><span class="p">))</span>
+                                     <span class="o">+</span> <span class="s1">&#39; rows&#39;</span>
+                                     <span class="p">)</span>
+            
+        <span class="k">elif</span> <span class="n">query</span> <span class="o">==</span> <span class="s2">&quot;EVENT_CALENDAR&quot;</span><span class="p">:</span>
+            
+            <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;reading event calendar...&#39;</span><span class="p">)</span>
+            
+            <span class="n">event_calendar</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">connect</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span>
+                                                    <span class="n">data_store</span> <span class="o">=</span> <span class="n">data_store</span><span class="p">,</span>
+                                                    <span class="n">query</span> <span class="o">=</span> <span class="n">sql</span>
+                                                    <span class="p">)</span>      
+            <span class="k">if</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span>
+                
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_filters</span><span class="p">[</span><span class="s1">&#39;division&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">f</span> <span class="o">=</span> <span class="p">[[</span><span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">data_filters</span><span class="p">[</span><span class="s1">&#39;division&#39;</span><span class="p">]]]</span>
+                
+                <span class="n">event_calendar</span> <span class="o">=</span> <span class="n">lower_case_and_filter</span><span class="p">(</span>
+                                                        <span class="n">data</span> <span class="o">=</span> <span class="n">event_calendar</span><span class="p">,</span>
+                                                        <span class="n">field_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;division&#39;</span><span class="p">],</span>
+                                                        <span class="n">filter_list</span> <span class="o">=</span> <span class="n">f</span>
+                                                      <span class="p">)</span>
+            <span class="n">event_calendar</span><span class="p">[</span><span class="n">time_grain</span><span class="p">]</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">event_calendar</span><span class="p">[</span><span class="n">time_grain</span><span class="p">])</span>
+            
+            
+    <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;data read complete...&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">raw_fact</span><span class="p">,</span> <span class="n">event_calendar</span></div>
+
+
+
+
+<div class="viewcode-block" id="find_max_date"><a class="viewcode-back" href="../../../apollo/src_api/pre_process.html#apollo.src.pre_process.find_max_date">[docs]</a><span class="k">def</span> <span class="nf">find_max_date</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">time_grain</span><span class="p">,</span> <span class="n">training_response</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param data:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">agg_by_time_grain</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">time_grain</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">time_grain</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="s1">&#39;sum&#39;</span><span class="p">)[</span><span class="n">training_response</span><span class="p">]</span>
+    <span class="n">agg_by_time_grain</span> <span class="o">=</span> <span class="n">agg_by_time_grain</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">max_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">agg_by_time_grain</span><span class="p">[</span><span class="n">agg_by_time_grain</span><span class="p">[</span><span class="n">training_response</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">][</span><span class="n">time_grain</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="s1">&#39;max&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()),</span> <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">max_date</span></div>
+
+
+
+<div class="viewcode-block" id="prepare_for_model_fit"><a class="viewcode-back" href="../../../apollo/src_api/pre_process.html#apollo.src.pre_process.prepare_for_model_fit">[docs]</a><span class="k">def</span> <span class="nf">prepare_for_model_fit</span><span class="p">(</span>
+                             <span class="n">raw_fact</span><span class="p">,</span>
+                             <span class="n">model_param_config</span><span class="p">,</span>
+                             <span class="n">main_info_logger</span><span class="p">,</span>
+                             <span class="n">event_calendar</span><span class="p">,</span>
+                             <span class="n">benchmark</span><span class="p">,</span>
+                             <span class="n">key</span><span class="p">,</span>
+                             <span class="n">time_grain</span><span class="p">,</span>
+                             <span class="n">training_response</span><span class="p">,</span>
+                             <span class="n">forecast_response</span><span class="p">,</span>
+                             <span class="n">response_dict</span><span class="p">,</span>
+                             <span class="n">run_id</span><span class="p">,</span>
+                             <span class="n">pass_through_key_attributes</span><span class="p">,</span>
+                             <span class="n">pre_process_execution_path</span><span class="p">,</span>
+                             <span class="n">parallel_partition_key</span><span class="p">,</span>
+                             <span class="n">epsilon</span><span class="p">,</span>
+                             <span class="n">cap_outliers</span>
+                         <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param raw_fact:</span>
+<span class="sd">    :param model_param_config:</span>
+<span class="sd">    :param main_info_logger:</span>
+<span class="sd">    :param event_calendar:</span>
+<span class="sd">    :param benchmark:</span>
+<span class="sd">    :param key:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :param forecast_response:</span>
+<span class="sd">    :param response_dict:</span>
+<span class="sd">    :param run_id:</span>
+<span class="sd">    :param pass_through_key_attributes:</span>
+<span class="sd">    :param pre_process_execution_path:</span>
+<span class="sd">    :param parallel_partition_key:</span>
+<span class="sd">    :param epsilon:</span>
+<span class="sd">    :param cap_outliers:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stdevs_to_cap_outliers</span> <span class="o">=</span> <span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;STDEVS_TO_CAP_OUTLIERS&#39;</span><span class="p">]</span>
+    <span class="n">max_date</span> <span class="o">=</span> <span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;MAX_DATE&#39;</span><span class="p">]</span>      
+    
+    <span class="k">if</span> <span class="n">max_date</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+        <span class="n">max_date</span> <span class="o">=</span> <span class="n">find_max_date</span><span class="p">(</span>
+                                    <span class="n">data</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span>
+                                    <span class="n">time_grain</span> <span class="o">=</span> <span class="n">time_grain</span><span class="p">,</span>
+                                    <span class="n">training_response</span> <span class="o">=</span> <span class="n">training_response</span>
+                                <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">max_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;MAX_DATE&#39;</span><span class="p">],</span> <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">zero_weeks_to_disco</span> <span class="o">=</span> <span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;ZERO_WEEKS_TO_DISCO&#39;</span><span class="p">]</span>
+    <span class="n">min_history_to_forecast</span> <span class="o">=</span> <span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;MIN_HISTORY_TO_FORECAST&#39;</span><span class="p">]</span>
+    <span class="n">holdout_start_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;HOLDOUT_START_DATE&#39;</span><span class="p">],</span> <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">holdout_to_training_ratio_new_item_threshold</span> <span class="o">=</span> <span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;HOLDOUT_TO_TRAINING_RATIO_NEW_ITEM_THRESHOLD&#39;</span><span class="p">]</span>
+    <span class="n">holdout_to_training_ratio_disco_threshold</span> <span class="o">=</span> <span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;HOLDOUT_TO_TRAINING_RATIO_DISCO_THRESHOLD&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span>
+        <span class="n">event_calendar_key</span> <span class="o">=</span> <span class="p">[</span><span class="n">time_grain</span><span class="p">,</span> <span class="s1">&#39;division&#39;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;month&#39;</span><span class="p">:</span>
+        <span class="n">event_calendar_key</span> <span class="o">=</span> <span class="p">[</span><span class="n">time_grain</span><span class="p">]</span>
+    
+    <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;pre_process: read in config params...&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">pre_process_execution_path</span> <span class="o">==</span> <span class="s1">&#39;non_parallel&#39;</span><span class="p">:</span>    
+    
+        <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">time_series_attribs</span><span class="o">.</span><span class="n">get_time_series_attribs</span><span class="p">(</span>
+                                                                              <span class="n">time_series_data_frame</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span> 
+                                                                              <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">,</span> 
+                                                                              <span class="n">time_grain</span> <span class="o">=</span> <span class="n">time_grain</span><span class="p">,</span> 
+                                                                              <span class="n">training_response</span> <span class="o">=</span> <span class="n">training_response</span><span class="p">,</span>
+                                                                              <span class="n">max_date</span> <span class="o">=</span> <span class="n">max_date</span><span class="p">,</span>
+                                                                              <span class="n">zero_weeks_to_disco</span> <span class="o">=</span> <span class="n">zero_weeks_to_disco</span><span class="p">,</span>
+                                                                              <span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span><span class="p">,</span>
+                                                                              <span class="n">holdout_start_date</span> <span class="o">=</span> <span class="n">holdout_start_date</span>
+                                                                              <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">pre_process_execution_path</span> <span class="o">==</span> <span class="s1">&#39;parallel&#39;</span><span class="p">:</span>
+        
+        <span class="n">pre_processed_data_set_list</span> <span class="o">=</span> <span class="n">get_partitioned_list</span><span class="p">(</span><span class="n">raw_fact</span><span class="p">,</span> <span class="n">parallel_partition_key</span><span class="p">)</span>      
+        <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">_parallel_get_time_series_attribs</span><span class="p">(</span>
+                                                                    <span class="n">pre_processed_data_set_list</span><span class="p">,</span> 
+                                                                    <span class="n">key</span><span class="p">,</span> 
+                                                                    <span class="n">time_grain</span><span class="p">,</span> 
+                                                                    <span class="n">training_response</span><span class="p">,</span>
+                                                                    <span class="n">max_date</span><span class="p">,</span>
+                                                                    <span class="n">zero_weeks_to_disco</span><span class="p">,</span>
+                                                                    <span class="n">epsilon</span><span class="p">,</span>
+                                                                    <span class="n">holdout_start_date</span>
+                                                               <span class="p">)</span>
+    
+    <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;pre_process: computed and merged time series attributes...&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">pre_process_execution_path</span> <span class="o">==</span> <span class="s1">&#39;non_parallel&#39;</span><span class="p">:</span> 
+    
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">cleanse_history</span><span class="o">.</span><span class="n">fill_in_missing_periods</span><span class="p">(</span>
+                                                                                    <span class="n">time_series_data_frame</span> <span class="o">=</span> <span class="n">raw_fact</span><span class="p">,</span> 
+                                                                                    <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">,</span>
+                                                                                    <span class="n">time_grain</span> <span class="o">=</span> <span class="n">time_grain</span><span class="p">,</span>
+                                                                                    <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response_dict</span><span class="p">,</span>
+                                                                                    <span class="n">pass_through_key_attributes</span> <span class="o">=</span> <span class="n">pass_through_key_attributes</span>
+                                                                                <span class="p">)</span>
+    
+    <span class="k">elif</span> <span class="n">pre_process_execution_path</span> <span class="o">==</span> <span class="s1">&#39;parallel&#39;</span><span class="p">:</span> 
+        
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">_parallel_fill_in_missing_periods</span><span class="p">(</span>
+                                                                           <span class="n">pre_processed_data_set_list</span> <span class="o">=</span> <span class="n">pre_processed_data_set_list</span><span class="p">,</span> 
+                                                                           <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">,</span>
+                                                                           <span class="n">time_grain</span> <span class="o">=</span> <span class="n">time_grain</span><span class="p">,</span>
+                                                                           <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response_dict</span><span class="p">,</span>
+                                                                           <span class="n">pass_through_key_attributes</span> <span class="o">=</span> <span class="n">pass_through_key_attributes</span>
+                                                                        <span class="p">)</span>
+    
+    <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;pre_process: filled in missing periods...&#39;</span><span class="p">)</span>
+    
+    <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        
+    <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                                                                    <span class="n">time_series_attribs</span><span class="p">,</span>
+                                                                    <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span>
+                                                                    <span class="n">on</span> <span class="o">=</span> <span class="n">key</span>
+                                                                    <span class="p">)</span>
+    
+    <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;nominal&#39;</span>    
+
+    <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;data_split&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">time_grain</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                                                                                                <span class="n">src</span><span class="o">.</span><span class="n">time_series_attribs</span><span class="o">.</span><span class="n">time_series_sample_labeling_conditions</span><span class="p">,</span>
+                                                                                                <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">max_date</span><span class="p">,</span> <span class="n">holdout_start_date</span><span class="p">)</span>
+                                                                                              <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cap_outliers</span><span class="p">:</span>
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                                                                                        <span class="n">src</span><span class="o">.</span><span class="n">cleanse_history</span><span class="o">.</span><span class="n">machine_cleanse_response</span><span class="p">,</span>
+                                                                                        <span class="n">training_response</span><span class="p">,</span>
+                                                                                        <span class="n">forecast_response</span><span class="p">,</span>
+                                                                                        <span class="n">stdevs_to_cap_outliers</span>
+                                                                                    <span class="p">)</span>
+
+    
+    
+    <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;pre_process: computed capped response...&#39;</span><span class="p">)</span>
+
+    <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                                                                                    <span class="n">_shift_response</span><span class="p">,</span>
+                                                                                    <span class="n">time_grain</span><span class="p">,</span>
+                                                                                    <span class="n">response_dict</span>
+                                                                                    <span class="p">)</span>
+    
+    
+    <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">_add_benchmark</span><span class="p">(</span>
+                                                   <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">,</span>  
+                                                   <span class="n">benchmark</span> <span class="o">=</span> <span class="n">benchmark</span><span class="p">,</span>
+                                                   <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response_dict</span>
+                                                <span class="p">)</span>
+    
+<span class="c1">#################### filter discos ##################</span>
+    
+    <span class="n">total_groups</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroups</span>
+    
+    <span class="k">if</span> <span class="n">total_groups</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    
+        <span class="n">discos</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;is_disco&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)[</span><span class="s1">&#39;is_disco&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                                                         <span class="n">discos</span><span class="p">,</span>
+                                                         <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span>
+                                                         <span class="n">on</span> <span class="o">=</span> <span class="n">key</span><span class="p">,</span>
+                                                         <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_y&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+                                                        <span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;is_disco_y&#39;</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;is_disco&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;is_disco&#39;</span>
+        <span class="n">groups_without_discos</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;is_disco&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">False</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroups</span>
+        <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;identified and labeled &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">groups_without_discos</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; non-disco groups&#39;</span><span class="p">)</span>    
+    
+<span class="c1">#################### filter groups without enough history ##################</span>
+    
+        <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">min_history_to_forecast</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;nominal&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="s1">&#39;not_enough_history&#39;</span>
+        <span class="n">groups_without_enough_history</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;not_enough_history&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroups</span>
+        <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;identified and labeled &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">groups_without_enough_history</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; additional groups without enough history&#39;</span><span class="p">)</span>
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;not_enough_history&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;time_series_length&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">True</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">min_history_to_forecast</span> <span class="k">else</span> <span class="kc">False</span><span class="p">)</span>
+    
+<span class="c1">#################### filter groups without enough history and near disco items ##################</span>
+            
+        <span class="n">pivot_filled_in_and_extended_fact</span> <span class="o">=</span> <span class="p">(</span>
+                                                <span class="n">pandas</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
+                                                                    <span class="n">data</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">,</span>
+                                                                    <span class="n">columns</span> <span class="o">=</span> <span class="s1">&#39;data_split&#39;</span><span class="p">,</span>
+                                                                    <span class="n">aggfunc</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
+                                                                    <span class="n">index</span> <span class="o">=</span> <span class="n">key</span><span class="p">,</span>
+                                                                    <span class="n">values</span> <span class="o">=</span> <span class="n">training_response</span><span class="p">,</span>
+                                                                    <span class="n">fill_value</span> <span class="o">=</span> <span class="mi">0</span>
+                                                                 <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+                                            <span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;Forecast&#39;</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="n">pivot_filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;holdout_training_ratio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pivot_filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;Holdout&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">pivot_filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;Training&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span>
+        <span class="n">pivot_filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">pivot_filled_in_and_extended_fact</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;Holdout&#39;</span><span class="p">,</span> <span class="s1">&#39;Training&#39;</span><span class="p">],</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                                                                        <span class="n">pivot_filled_in_and_extended_fact</span><span class="p">,</span>
+                                                                        <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span>
+                                                                        <span class="n">on</span> <span class="o">=</span> <span class="n">key</span>
+                                                                        <span class="p">)</span>
+        <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;holdout_training_ratio&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">holdout_to_training_ratio_new_item_threshold</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;nominal&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="s1">&#39;new_item&#39;</span>
+        <span class="n">groups_with_new_items</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;new_item&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroups</span>
+        <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;identified and labeled &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">groups_with_new_items</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; new item groups&#39;</span><span class="p">)</span>
+ 
+        <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;holdout_training_ratio&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">holdout_to_training_ratio_disco_threshold</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;nominal&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="s1">&#39;near_disco&#39;</span>
+        <span class="n">groups_with_near_disco_items</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;near_disco&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroups</span>
+        <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;identified and labeled &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">groups_with_near_disco_items</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; near disco groups&#39;</span><span class="p">)</span>    
+        <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                                                         <span class="n">pivot_filled_in_and_extended_fact</span><span class="p">,</span>
+                                                         <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span>
+                                                         <span class="n">on</span> <span class="o">=</span> <span class="n">key</span>
+                                                        <span class="p">)</span>
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;new_item&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;holdout_training_ratio&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">True</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="n">holdout_to_training_ratio_new_item_threshold</span> <span class="k">else</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;near_disco&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;holdout_training_ratio&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">True</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">holdout_to_training_ratio_disco_threshold</span> <span class="k">else</span> <span class="kc">False</span><span class="p">)</span>
+
+<span class="c1">#################### filter intermittent ##################</span>
+        
+        <span class="n">percent_zeros_threshold_for_intermittent</span> <span class="o">=</span> <span class="n">model_param_config</span><span class="p">[</span><span class="s1">&#39;PERCENT_ZEROS_THRESHOLD_FOR_INTERMITTENT&#39;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">pre_process_execution_path</span> <span class="o">==</span> <span class="s1">&#39;non_parallel&#39;</span><span class="p">:</span>  
+            <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_check_intermittent</span><span class="p">,</span> <span class="n">training_response</span><span class="p">,</span> <span class="n">percent_zeros_threshold_for_intermittent</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">pre_process_execution_path</span> <span class="o">==</span> <span class="s1">&#39;parallel&#39;</span><span class="p">:</span>          
+            <span class="n">pre_processed_data_set_list</span> <span class="o">=</span> <span class="n">get_partitioned_list</span><span class="p">(</span><span class="n">filled_in_and_extended_fact</span><span class="p">,</span> <span class="n">parallel_partition_key</span><span class="p">)</span> 
+            <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">_parallel_check_intermittent</span><span class="p">(</span>
+                                                                          <span class="n">pre_processed_data_set_list</span><span class="p">,</span>
+                                                                          <span class="n">key</span><span class="p">,</span>
+                                                                          <span class="n">training_response</span><span class="p">,</span>
+                                                                          <span class="n">percent_zeros_threshold_for_intermittent</span>
+                                                                      <span class="p">)</span>
+        
+        <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;labelled intermittent time series...&#39;</span><span class="p">)</span>
+        
+<span class="c1">#################### join event calendar ##################</span>
+    
+        <span class="n">pivot_event_calendar</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">cleanse_history</span><span class="o">.</span><span class="n">pivot_and_fill_in_missing_periods</span><span class="p">(</span><span class="n">event_calendar</span><span class="p">,</span> <span class="n">time_grain</span><span class="p">,</span> <span class="n">event_calendar_key</span><span class="p">)</span>
+        
+        <span class="n">cols</span> <span class="o">=</span> <span class="n">pivot_event_calendar</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">pivot_event_calendar</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="s1">&#39;float64&#39;</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">pivot_event_calendar</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span> <span class="o">=</span> <span class="n">pivot_event_calendar</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int8&#39;</span><span class="p">)</span>
+        
+        
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                                                                            <span class="n">right</span> <span class="o">=</span> <span class="n">pivot_event_calendar</span><span class="p">,</span>
+                                                                            <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span>
+                                                                            <span class="n">on</span> <span class="o">=</span> <span class="n">event_calendar_key</span><span class="p">,</span>
+                                                                            <span class="n">copy</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                                                                            <span class="n">indicator</span> <span class="o">=</span> <span class="kc">False</span>
+                                                                        <span class="p">)</span>
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>   
+		
+<span class="c1">#################### append holdout and forecast part of event calendar to filled_in_and_extended_fact ##################</span>
+		
+
+        <span class="n">exog_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pivot_event_calendar</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">exog_cols</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">event_calendar_key</span><span class="p">]</span>
+<span class="c1">#</span>
+<span class="c1">#        filled_in_and_extended_fact = filled_in_and_extended_fact.groupby(key).apply(_append_exogs_to_df, exog_cols)</span>
+<span class="c1">#</span>
+<span class="c1">#        exog_cols_holdout = [col + &#39;_holdout&#39; for col in exog_cols]</span>
+<span class="c1">#        exog_cols_forecast = [col + &#39;_forecast&#39; for col in exog_cols]</span>
+<span class="c1">#        </span>
+<span class="c1">#        filled_in_and_extended_fact.columns = orig_cols + exog_cols + exog_cols_holdout + exog_cols_forecast</span>
+		
+                
+<span class="c1">#################### clean up time_series_attribs for write ##################</span>
+        
+        
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;run_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_id</span>    
+        <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>    
+        <span class="n">time_series_attribs</span> <span class="o">=</span> <span class="n">time_series_attribs</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;coeff_of_variation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;coeff_of_variation&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;coeff_of_variation&#39;</span><span class="p">])</span>
+        <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;long_term_stdev&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;long_term_stdev&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">time_series_attribs</span><span class="p">[</span><span class="s1">&#39;long_term_stdev&#39;</span><span class="p">])</span>    
+        
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">response_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">response</span><span class="p">]</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">response</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lower</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="n">response</span><span class="p">]</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span>
+        <span class="n">div</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;division&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>                
+        <span class="n">holidays</span> <span class="o">=</span> <span class="n">event_calendar</span><span class="p">[</span><span class="n">event_calendar</span><span class="o">.</span><span class="n">division</span> <span class="o">==</span> <span class="n">div</span><span class="p">][[</span><span class="n">time_grain</span><span class="p">,</span> <span class="s1">&#39;event_name&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">holidays</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ds&#39;</span><span class="p">,</span> <span class="s1">&#39;holiday&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">holidays</span> <span class="o">=</span> <span class="n">event_calendar</span><span class="p">[[</span><span class="n">time_grain</span><span class="p">,</span> <span class="s1">&#39;event_name&#39;</span><span class="p">]]</span>
+        <span class="n">holidays</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ds&#39;</span><span class="p">,</span> <span class="s1">&#39;holiday&#39;</span><span class="p">]</span>
+    
+    <span class="n">main_info_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;data cleanse complete...&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">filled_in_and_extended_fact</span><span class="p">,</span> <span class="n">pivot_event_calendar</span><span class="p">,</span> <span class="n">time_series_attribs</span><span class="p">,</span> <span class="n">holidays</span><span class="p">,</span> <span class="n">exog_cols</span></div>
+
+
+<div class="viewcode-block" id="lower_case_and_filter"><a class="viewcode-back" href="../../../apollo/src_api/pre_process.html#apollo.src.pre_process.lower_case_and_filter">[docs]</a><span class="k">def</span> <span class="nf">lower_case_and_filter</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">field_list</span><span class="p">,</span> <span class="n">filter_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param data:</span>
+<span class="sd">    :param field_list:</span>
+<span class="sd">    :param filter_list:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># add additional actions to action_list and associated arguments    </span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">action</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">field_list</span><span class="p">):</span>
+                
+        <span class="k">if</span> <span class="n">field_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">field_list</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">field_list</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">field_list</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">field_list</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">field_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span> <span class="k">if</span> <span class="n">filter_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span> <span class="k">else</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">field_list</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">filter_list</span><span class="p">[</span><span class="n">i</span><span class="p">])]</span>        
+        
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+
+<div class="viewcode-block" id="drop_unused_response"><a class="viewcode-back" href="../../../apollo/src_api/pre_process.html#apollo.src.pre_process.drop_unused_response">[docs]</a><span class="k">def</span> <span class="nf">drop_unused_response</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">response_dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param data:</span>
+<span class="sd">    :param response_dict:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">response_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;pos_sales&#39;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;clean_pos_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;unclean_pos_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;pos_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;pos_unit&#39;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;clean_pos_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;unclean_pos_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;pos_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;order_sales&#39;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;clean_order_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;unclean_order_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;order_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;order_unit&#39;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;clean_order_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;unclean_order_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;order_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;invoice_sales&#39;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;clean_invoice_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;unclean_invoice_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;invoice_unit&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;invoice_unit&#39;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;clean_invoice_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;unclean_invoice_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;invoice_sales&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+
+<div class="viewcode-block" id="drop_unused_benchmark"><a class="viewcode-back" href="../../../apollo/src_api/pre_process.html#apollo.src.pre_process.drop_unused_benchmark">[docs]</a><span class="k">def</span> <span class="nf">drop_unused_benchmark</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">benchmark</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param data:</span>
+<span class="sd">    :param benchmark:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">benchmark</span> <span class="o">==</span> <span class="s1">&#39;stat&#39;</span><span class="p">:</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;consensus&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">benchmark</span> <span class="o">==</span> <span class="s1">&#39;consensus&#39;</span><span class="p">:</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;stat&#39;</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+
+<div class="viewcode-block" id="aggregate_by_key"><a class="viewcode-back" href="../../../apollo/src_api/pre_process.html#apollo.src.pre_process.aggregate_by_key">[docs]</a><span class="k">def</span> <span class="nf">aggregate_by_key</span><span class="p">(</span>
+                        <span class="n">data</span><span class="p">,</span> 
+                        <span class="n">key</span><span class="p">,</span> 
+                        <span class="n">time_grain</span><span class="p">,</span> 
+                        <span class="n">response_dict</span><span class="p">,</span>
+                        <span class="n">benchmark</span><span class="p">,</span> 
+                        <span class="n">pass_through_key_attributes</span><span class="p">,</span>
+                        <span class="n">parallel_partitions</span>
+                        <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param data:</span>
+<span class="sd">    :param key:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param response_dict:</span>
+<span class="sd">    :param benchmark:</span>
+<span class="sd">    :param pass_through_key_attributes:</span>
+<span class="sd">    :param parallel_partitions:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">agg_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">response_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">agg_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="n">gb_key</span> <span class="o">=</span> <span class="n">key</span> <span class="o">+</span> <span class="p">[</span><span class="n">time_grain</span><span class="p">]</span> <span class="o">+</span> <span class="n">pass_through_key_attributes</span>
+    <span class="k">if</span> <span class="n">benchmark</span> <span class="o">!=</span> <span class="s1">&#39;last_year&#39;</span><span class="p">:</span>
+        <span class="n">agg_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">benchmark</span><span class="p">)</span>        
+    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">gb_key</span><span class="p">)[</span><span class="n">agg_list</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="s1">&#39;sum&#39;</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">data</span><span class="p">[</span><span class="s1">&#39;parallel_partition_dense_rank&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">ngroup</span><span class="p">()</span>
+    <span class="n">data</span><span class="p">[</span><span class="s1">&#39;parallel_partition_dense_rank&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;parallel_partition_dense_rank&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="n">parallel_partitions</span>
+    
+    <span class="k">return</span> <span class="n">data</span></div>
+    
+<span class="k">def</span> <span class="nf">_check_intermittent</span><span class="p">(</span>
+                            <span class="n">x</span><span class="p">,</span> 
+                            <span class="n">training_response</span><span class="p">,</span>
+                            <span class="n">percent_zeros_threshold_for_intermittent</span>
+                        <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param x:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :param percent_zeros_threshold_for_intermittent:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">time_series_class</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">time_series_class</span> <span class="o">==</span> <span class="s1">&#39;nominal&#39;</span><span class="p">:</span>
+        
+        <span class="n">complete_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;data_split&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;Forecast&#39;</span><span class="p">]</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">complete_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">zeros_ratio</span> <span class="o">=</span> <span class="n">complete_x</span><span class="p">[</span><span class="n">complete_x</span><span class="p">[</span><span class="n">training_response</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">n</span>
+            <span class="k">if</span> <span class="n">zeros_ratio</span> <span class="o">&gt;=</span> <span class="n">percent_zeros_threshold_for_intermittent</span><span class="p">:</span>
+                <span class="n">x</span><span class="p">[</span><span class="s1">&#39;time_series_class&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;intermittent&#39;</span>    
+    <span class="k">return</span> <span class="n">x</span>
+
+
+<span class="k">def</span> <span class="nf">_parallel_get_time_series_attribs</span><span class="p">(</span>
+                                        <span class="n">pre_processed_data_set_list</span><span class="p">,</span> 
+                                        <span class="n">key</span><span class="p">,</span> 
+                                        <span class="n">time_grain</span><span class="p">,</span> 
+                                        <span class="n">training_response</span><span class="p">,</span>
+                                        <span class="n">max_date</span><span class="p">,</span>
+                                        <span class="n">zero_weeks_to_disco</span><span class="p">,</span>
+                                        <span class="n">epsilon</span><span class="p">,</span>
+                                        <span class="n">holdout_start_date</span>
+                                     <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param pre_processed_data_set_list:</span>
+<span class="sd">    :param key:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :param max_date:</span>
+<span class="sd">    :param zero_weeks_to_disco:</span>
+<span class="sd">    :param epsilon:</span>
+<span class="sd">    :param holdout_start_date:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s1">&#39;processes&#39;</span><span class="p">)</span>
+    
+    <span class="n">task_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pre_processed_data_set_list</span><span class="p">)):</span>
+        <span class="n">df_list_element</span> <span class="o">=</span> <span class="n">pre_processed_data_set_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df_list_element</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">fit_task</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">time_series_attribs</span><span class="o">.</span><span class="n">get_time_series_attribs</span><span class="p">)(</span>
+                                                                                    <span class="n">df</span><span class="p">,</span> 
+                                                                                    <span class="n">key</span><span class="p">,</span> 
+                                                                                    <span class="n">time_grain</span><span class="p">,</span> 
+                                                                                    <span class="n">training_response</span><span class="p">,</span>
+                                                                                    <span class="n">max_date</span><span class="p">,</span>
+                                                                                    <span class="n">zero_weeks_to_disco</span><span class="p">,</span>
+                                                                                    <span class="n">epsilon</span><span class="p">,</span>
+                                                                                    <span class="n">holdout_start_date</span>
+                                                                                <span class="p">)</span>
+        <span class="n">task_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fit_task</span><span class="p">)</span>
+            
+    <span class="n">fit_task</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">combine_into_df</span><span class="p">)(</span><span class="n">task_list</span><span class="p">)</span>            
+    <span class="n">time_series_attribs</span>  <span class="o">=</span> <span class="n">fit_task</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">time_series_attribs</span>
+
+
+<span class="k">def</span> <span class="nf">_parallel_fill_in_missing_periods</span><span class="p">(</span>
+                                        <span class="n">pre_processed_data_set_list</span><span class="p">,</span> 
+                                        <span class="n">key</span><span class="p">,</span>
+                                        <span class="n">time_grain</span><span class="p">,</span>
+                                        <span class="n">response_dict</span><span class="p">,</span>
+                                        <span class="n">pass_through_key_attributes</span>
+                                     <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param pre_processed_data_set_list:</span>
+<span class="sd">    :param key:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param response_dict:</span>
+<span class="sd">    :param pass_through_key_attributes:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s1">&#39;processes&#39;</span><span class="p">)</span>
+    
+    <span class="n">task_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pre_processed_data_set_list</span><span class="p">)):</span>
+        <span class="n">df_list_element</span> <span class="o">=</span> <span class="n">pre_processed_data_set_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df_list_element</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">fit_task</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">cleanse_history</span><span class="o">.</span><span class="n">fill_in_missing_periods</span><span class="p">)(</span>
+                                                                                <span class="n">df</span><span class="p">,</span> 
+                                                                                <span class="n">key</span><span class="p">,</span>
+                                                                                <span class="n">time_grain</span><span class="p">,</span>
+                                                                                <span class="n">response_dict</span><span class="p">,</span>
+                                                                                <span class="n">pass_through_key_attributes</span>
+                                                                            <span class="p">)</span>
+        <span class="n">task_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fit_task</span><span class="p">)</span>
+            
+    <span class="n">fit_task</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">combine_into_df</span><span class="p">)(</span><span class="n">task_list</span><span class="p">)</span>            
+    <span class="n">filled_in_and_extended_fact</span>  <span class="o">=</span> <span class="n">fit_task</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">filled_in_and_extended_fact</span>
+
+
+<span class="k">def</span> <span class="nf">_apply_check_intermittent</span><span class="p">(</span>
+                                 <span class="n">gb</span><span class="p">,</span>
+                                 <span class="n">training_response</span><span class="p">,</span>
+                                 <span class="n">percent_zeros_threshold_for_intermittent</span>
+                             <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param gb:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :param percent_zeros_threshold_for_intermittent:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">gb</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                    <span class="n">_check_intermittent</span><span class="p">,</span> 
+                    <span class="n">training_response</span><span class="p">,</span>
+                    <span class="n">percent_zeros_threshold_for_intermittent</span>
+                <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">x</span>    
+
+
+<span class="k">def</span> <span class="nf">_parallel_check_intermittent</span><span class="p">(</span>
+                                  <span class="n">pre_processed_data_set_list</span><span class="p">,</span>
+                                  <span class="n">key</span><span class="p">,</span>
+                                  <span class="n">training_response</span><span class="p">,</span>
+                                  <span class="n">percent_zeros_threshold_for_intermittent</span>
+                                <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param pre_processed_data_set_list:</span>
+<span class="sd">    :param key:</span>
+<span class="sd">    :param training_response:</span>
+<span class="sd">    :param percent_zeros_threshold_for_intermittent:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s1">&#39;processes&#39;</span><span class="p">)</span>
+    
+    <span class="n">task_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pre_processed_data_set_list</span><span class="p">)):</span>
+        <span class="n">df_list_element</span> <span class="o">=</span> <span class="n">pre_processed_data_set_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df_list_element</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">gb</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">fit_task</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">_apply_check_intermittent</span><span class="p">)(</span>
+                                                               <span class="n">gb</span><span class="p">,</span> 
+                                                               <span class="n">training_response</span><span class="p">,</span>
+                                                               <span class="n">percent_zeros_threshold_for_intermittent</span>
+                                                          <span class="p">)</span>
+        <span class="n">task_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fit_task</span><span class="p">)</span>
+            
+    <span class="n">fit_task</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">combine_into_df</span><span class="p">)(</span><span class="n">task_list</span><span class="p">)</span>            
+    <span class="n">filled_in_and_extended_fact</span>  <span class="o">=</span> <span class="n">fit_task</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">filled_in_and_extended_fact</span>
+    
+<span class="k">def</span> <span class="nf">_shift_response</span><span class="p">(</span>
+                        <span class="n">x</span><span class="p">,</span>
+                        <span class="n">time_grain</span><span class="p">,</span>
+                        <span class="n">response_dict</span>
+                        <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param x:</span>
+<span class="sd">    :param time_grain:</span>
+<span class="sd">    :param response_dict:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">response_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">time_grain</span> <span class="o">==</span> <span class="s1">&#39;month&#39;</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">[</span><span class="s1">&#39;shifted_&#39;</span> <span class="o">+</span> <span class="n">response</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">response</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">[</span><span class="s1">&#39;shifted_&#39;</span> <span class="o">+</span> <span class="n">response</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">response</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">52</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">x</span>
+
+<span class="k">def</span> <span class="nf">_add_benchmark</span><span class="p">(</span>
+                    <span class="n">filled_in_and_extended_fact</span><span class="p">,</span>  
+                    <span class="n">benchmark</span><span class="p">,</span>
+                    <span class="n">response_dict</span>
+                  <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param filled_in_and_extended_fact:</span>
+<span class="sd">    :param benchmark:</span>
+<span class="sd">    :param response_dict:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">benchmark</span> <span class="o">==</span> <span class="s1">&#39;last_year&#39;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">response_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>        
+            <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;benchmark&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;shifted_&#39;</span> <span class="o">+</span> <span class="n">response</span><span class="p">]</span>
+	
+    <span class="k">elif</span> <span class="n">benchmark</span> <span class="o">==</span> <span class="s1">&#39;consensus&#39;</span><span class="p">:</span>
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;consensus&#39;</span><span class="p">:</span>  <span class="s1">&#39;benchmark&#39;</span><span class="p">})</span>
+    
+    <span class="k">elif</span> <span class="n">benchmark</span> <span class="o">==</span> <span class="s1">&#39;stat&#39;</span><span class="p">:</span>
+        <span class="n">filled_in_and_extended_fact</span> <span class="o">=</span> <span class="n">filled_in_and_extended_fact</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;stat&#39;</span><span class="p">:</span>  <span class="s1">&#39;benchmark&#39;</span><span class="p">})</span>
+    
+    <span class="n">filled_in_and_extended_fact</span><span class="p">[</span><span class="s1">&#39;benchmark_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">benchmark</span>    
+    
+    <span class="k">return</span> <span class="n">filled_in_and_extended_fact</span>
+
+<span class="sd">&quot;&quot;&quot;  </span>
+<span class="sd"># appending holdout and forecast exog variables to the top-rigth of the matrix to avoid string comparison in fit_orchestrate</span>
+<span class="sd">#def _append_exogs_to_df(x, exog_cols):</span>
+<span class="sd">#    </span>
+<span class="sd">#    x.reset_index(inplace=True)</span>
+<span class="sd">#    holdout_exog_data = x[x.data_split == &#39;Holdout&#39;][exog_cols].reset_index(drop=True)</span>
+<span class="sd">#    forecast_exog_data = x[x.data_split == &#39;Forecast&#39;][exog_cols].reset_index(drop=True)</span>
+<span class="sd">#</span>
+<span class="sd">#    x = pandas.concat([x, holdout_exog_data, forecast_exog_data], axis=1)</span>
+<span class="sd">#    x.set_index(keys=&#39;index&#39;, inplace=True)</span>
+<span class="sd">#	</span>
+<span class="sd">#    return x</span>
+<span class="sd">&quot;&quot;&quot;</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, vik
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

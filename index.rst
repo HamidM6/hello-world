@@ -1,17 +1,20 @@
 .. apollo documentation master file, created by
-   sphinx-quickstart on Mon Apr 29 14:55:08 2019.
+   sphinx-quickstart on Wed Apr 24 12:05:23 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to apollo's documentation!
-==================================
+apollo's documentation!
+===========================
+
+Newell Brands Supply Chain Demand Forecasting Platform
+
+Generalized and performant Python framework to forecast point of sale and sales order $'s and units, at different granularities
 
 .. toctree::
-	:maxdepth: 2
-	
-	home
-	module_master
-	model_master
+   :maxdepth: 2
+   :caption: Contents:
+   
+   code
 
 
 

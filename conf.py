@@ -12,20 +12,17 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('C:\\Users\\UF31246\\Desktop\\docs\\test'))
-
-# sys.path.insert(0, os.path.abspath('C:\\Users\\UF31246\\Desktop\\docs\\test\\apollo\\src'))
-# sys.path.insert(0, os.path.abspath('C:\\Users\\UF31246\\Desktop\\docs\\test\\apollo\\fit'))
+sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'apollo'
-copyright = '2019, vik'
-author = 'vik'
+copyright = '2019, xyz'
+author = 'xyz'
 
 # The full version, including alpha/beta/rc tags
-release = '3.0'
+release = '1.0'
 
 
 # -- General configuration ---------------------------------------------------

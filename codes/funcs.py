@@ -1,11 +1,9 @@
 """
 .. moduleauthor:: UF31246
 """
-import numpy
+
 import pandas
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-import dask
-
 
 
 def _combine_into_df(x):
